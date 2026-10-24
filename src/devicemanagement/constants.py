@@ -2,6 +2,10 @@ from enum import Enum
 
 MIN_VERSION = "17.0"
 MAX_VERSION = "26.9"
+IOS_27_RESTORE_WARNING = (
+    "iOS 27 restore support is unverified. Apple has patched the partial-restore "
+    "mechanism used by Nugget; applying changes may cause data loss. Restore is blocked."
+)
 
 class Device:
     def __init__(self, 
@@ -53,10 +57,24 @@ class Device:
 
     def partially_supported(self) -> bool:
         return self.has_exploit()
+    def restore_support_reason(self) -> str | None:
+        """Return why restore is blocked, or None when the version is in the known range.
+
+        This is a conservative version gate, not proof that a particular device/build
+        is safe. Do not expand MAX_VERSION until a restore method has been validated.
+        """
+        parsed_ver = Version(self.version)
+        if parsed_ver >= Version("27.0"):
+            return IOS_27_RESTORE_WARNING
+        if parsed_ver < Version(MIN_VERSION):
+            return f"iOS {self.version} is below Nugget's minimum supported version ({MIN_VERSION})."
+        if parsed_ver > Version(MAX_VERSION):
+            return f"iOS {self.version} is outside Nugget's verified version range (through {MAX_VERSION})."
+        return None
+
     def supported(self) -> bool:
-        parsed_ver: Version = Version(self.version)
-        # make sure it is above the minimum version and below max version
-        return parsed_ver >= Version(MIN_VERSION) and parsed_ver <= Version(MAX_VERSION)
+        # Keep this as the central, conservative gate used by the restore workflow.
+        return self.restore_support_reason() is None
 
 class Version:
     def __init__(self, major: int, minor: int = 0, patch: int = 0):

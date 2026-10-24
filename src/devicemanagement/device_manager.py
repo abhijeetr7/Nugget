@@ -536,7 +536,10 @@ class DeviceManager:
     async def start_restore(self, files_to_restore: list[FileToRestore], use_bookrestore: bool, update_label=lambda x: None, skips_br_for_folders: bool=False, reboot_for_br: bool=False):
         # prevent restores if on an unsafe version
         if not self.get_current_device_supports_restore():
-            raise NuggetException(QCoreApplication.tr("Your iOS version is not supported by Nugget."))
+            device = self.data_singleton.current_device
+            reason = device.restore_support_reason() if device is not None else None
+            message = reason or QCoreApplication.tr("Your iOS version is not supported by Nugget.")
+            raise NuggetException(QCoreApplication.tr(message))
         # if skips_br_for_folders is True, the message will be added to the result letting them know that they can apply feature flags now
         self.update_label = update_label
         self.do_not_unplug = ""
